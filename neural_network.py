@@ -18,15 +18,12 @@ class NeuralNetwork:
             activations.append(activation)
         return (outputs, activations) if back_prop else layer_input
 
-    def train(self, inputs, outputs, loss='mse'):
+    def train(self, inputs, outputs, loss='mse', lr=1e-6):
         if loss =='mse':
             loss_fn = nn_math.mse
-        train_loss, tol = 10000, 0.001
 
         for i in range(1000):
             layer_outputs, layer_activations = self.forward(inputs, back_prop=True)
-            # for output in layer_outputs:
-            #     print(output.shape)
             num_layers, n = len(layer_outputs), len(layer_activations) - 1
             delta = [None] * (n+1)
             delta[n], dW = nn_math.dmse(outputs, layer_outputs[n-1]), np.eye(self.layers[-1].size)
@@ -34,10 +31,11 @@ class NeuralNetwork:
                 print('loss = {}'.format(nn_math.mse(outputs, layer_activations[n])))
             for l in range(n-1,0,-1):
                 output, activation, layer = layer_outputs[l], layer_activations[l], self.layers[l+1]
-                delta[l] = np.multiply(delta[l+1].dot(dW.T), nn_math.dReLU(output))
+                dSigma = np.apply_along_axis(layer.dActivation_fn(), 0, output)
+                delta[l] = np.multiply(delta[l+1].dot(dW.T), dSigma)
                 dW = layer.weights
-                layer.weights = layer.weights - 2e-4 * activation.T.dot(delta[l])
-                layer.bias = layer.bias - 2e-4 * np.mean(delta[l], axis=0, keepdims=True)
+                layer.weights = layer.weights - lr * activation.T.dot(delta[l])
+                layer.bias = layer.bias - lr * np.mean(delta[l], axis=0, keepdims=True)
 class Layer:
     def __init__(self, size, activation=None, use_bias=True):
         self.size = size
@@ -66,7 +64,7 @@ class Layer:
         elif self.activation == 'ReLU':
             return lambda x: nn_math.dReLU(x)
         else:
-            return lambda x: 1
+            return lambda x: np.ones(x.shape)
 
     def forward(self, inputs):
         outputs = inputs.dot(self.weights) + self.bias
