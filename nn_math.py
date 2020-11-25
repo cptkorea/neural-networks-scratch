@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 def Sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
+def dSigmoid(x):
+    return Sigmoid(x) * (1 - Sigmoid(x))
+
 def ReLU(x):
     return np.maximum(0, x)
 
